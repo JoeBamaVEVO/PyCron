@@ -19,12 +19,11 @@ def createJsonFile():
             json.dump(data, f)
 
 def displayChoices():
-    print("please choose an option")
+    print("please choose an option \n")
     print("1. Add a new cronjob")
     print("2. View all cronjobs")
     print("3. Delete a cronjob")
     print("4. Exit")
-    print("5. test")
     option = input("Enter your option: ")
     print("\n")
 
@@ -36,17 +35,24 @@ def displayChoices():
         deleteCronjob()
     elif option == "4":
         exit()
-    elif option == "5":
-        fetchCronjobs()
+    elif option == "":
+        displayChoices()
     # return option
 
 def addCronjob():
     url = input("Enter the url: ")
+    if url == "":
+        print("URL cannot be empty")
+        addCronjob()
     interval = input("Enter the interval in minutes: ")
+    if interval == "":
+        print("Interval cannot be empty")
+        addCronjob()
     print("Confirm the following details" + "\n" + "URL: " + url + "\n" + "Interval: " + interval + " minutes")
     confirm = input("Do you want to create a cronjob Y/n ?: ")
     if confirm == "n":
-        print("Cronjob creation cancelled") 
+        print("Cronjob creation cancelled")
+        displayChoices() 
     else:
         with open('jobs.json', 'r') as f:
             # Load JSON data from file
@@ -141,17 +147,11 @@ def check_crontime(joblist, stop_event):
 def do_cronjob(url):
     winsound.Beep(1000, 1000)
     print("Running cronjob: ", url)
-    response = req.get(url)
-    print(response.text)
-    
-
-def test(stop_event):
-    while not stop_event.is_set():
-        time.sleep(5)
-        import winsound
-        winsound.Beep(1000, 1000)
-        # print("Running in the background...")
-        
+    try:
+        response = req.get(url)
+        print(response.text)
+    except:
+        print("Failed to run cronjob: ", url)
     
 
 if __name__ == "__main__":
