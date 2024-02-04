@@ -7,8 +7,6 @@ from datetime import datetime, timedelta
 import threading
 import winsound
 
-
-
 def createJsonFile():
     if not os.path.exists('jobs.json'):
         data = {
@@ -17,6 +15,48 @@ def createJsonFile():
         with open('jobs.json', 'w') as f:
             # Write updated data to file
             json.dump(data, f)
+
+def fetchCronjobs(): # Fetch cronjobs from the json file and calculate the next update time
+    with open('jobs.json', 'r') as f:
+        # Load JSON data from file
+        data = json.load(f)
+        data = data['jobs']
+        joblist = []
+        for job in data:
+            job = list(job.values())[0]
+            now = datetime.now()
+            nextUpdate = now + timedelta(minutes=int(job["interval"]))
+            data = {
+                "url": job["url"],
+                "interval": job["interval"], 
+                "nextUpdate": nextUpdate
+            }
+            joblist.append(data)
+        return joblist
+    
+
+def check_crontime(joblist, stop_event):
+    while not stop_event.is_set():
+        now = datetime.now()
+        for job in joblist:
+            if now >= job["nextUpdate"]:
+                print("Time to update: ", job["url"])
+
+                do_cronjob(job["url"])
+
+                #Calculate new time for cronjob
+                job["nextUpdate"] = now + timedelta(minutes=int(job["interval"]))
+                print("Next update: ", job["nextUpdate"])
+
+def do_cronjob(url):
+    winsound.Beep(1000, 1000)
+    print("Running cronjob: ", url)
+    try:
+        response = req.get(url)
+        print(response.text)
+    except:
+        print("Failed to run cronjob: ", url)
+
 
 def displayChoices():
     print("please choose an option \n")
@@ -38,6 +78,16 @@ def displayChoices():
     elif option == "":
         displayChoices()
     # return option
+        
+def updateCronjobs(url, interval):
+    now = datetime.now()
+    nextUpdate = now + timedelta(minutes=int(interval))
+    data = {
+        "url": url,
+        "interval": interval, 
+        "nextUpdate": nextUpdate
+    }
+    joblist.append(data)
 
 def addCronjob():
     url = input("Enter the url: ")
@@ -70,6 +120,7 @@ def addCronjob():
             # Write updated data to file
             json.dump(data, f)
         print("Cronjob added successfully \n")
+        updateCronjobs(url, interval)
         displayChoices()
             
 def viewCronjobs():
@@ -112,46 +163,7 @@ def exit():
     stop_event.set()
     sys.exit()
 
-def fetchCronjobs(): # Fetch cronjobs from the json file and calculate the next update time
-    with open('jobs.json', 'r') as f:
-        # Load JSON data from file
-        data = json.load(f)
-        data = data['jobs']
-        joblist = []
-        for job in data:
-            job = list(job.values())[0]
-            now = datetime.now()
-            nextUpdate = now + timedelta(minutes=int(job["interval"]))
-            data = {
-                "url": job["url"],
-                "interval": job["interval"], 
-                "nextUpdate": nextUpdate
-            }
-            joblist.append(data)
-        return joblist
-    
 
-def check_crontime(joblist, stop_event):
-    while not stop_event.is_set():
-        now = datetime.now()
-        for job in joblist:
-            if now >= job["nextUpdate"]:
-                print("Time to update: ", job["url"])
-
-                do_cronjob(job["url"])
-
-                #Calculate new time for cronjob
-                job["nextUpdate"] = now + timedelta(minutes=int(job["interval"]))
-                print("Next update: ", job["nextUpdate"])
-
-def do_cronjob(url):
-    winsound.Beep(1000, 1000)
-    print("Running cronjob: ", url)
-    try:
-        response = req.get(url)
-        print(response.text)
-    except:
-        print("Failed to run cronjob: ", url)
     
 
 if __name__ == "__main__":
