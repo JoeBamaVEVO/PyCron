@@ -3,6 +3,11 @@ import time
 import requests as req
 import json
 import os
+from datetime import datetime, timedelta
+import threading
+import winsound
+
+
 
 def createJsonFile():
     if not os.path.exists('jobs.json'):
@@ -19,6 +24,7 @@ def displayChoices():
     print("2. View all cronjobs")
     print("3. Delete a cronjob")
     print("4. Exit")
+    print("5. test")
     option = input("Enter your option: ")
     print("\n")
 
@@ -29,7 +35,9 @@ def displayChoices():
     elif option == "3":
         deleteCronjob()
     elif option == "4":
-        pass
+        exit()
+    elif option == "5":
+        fetchCronjobs()
     # return option
 
 def addCronjob():
@@ -94,14 +102,72 @@ def deleteCronjob():
     displayChoices()
 
 def exit():
+    print("Goodbye!")
+    stop_event.set()
     sys.exit()
-    
-    
-    
-createJsonFile()
-print("\n Welcome to kristian's cronjob mangement system \n")
 
-displayChoices()
+def fetchCronjobs(): # Fetch cronjobs from the json file and calculate the next update time
+    with open('jobs.json', 'r') as f:
+        # Load JSON data from file
+        data = json.load(f)
+        data = data['jobs']
+        joblist = []
+        for job in data:
+            job = list(job.values())[0]
+            now = datetime.now()
+            nextUpdate = now + timedelta(minutes=int(job["interval"]))
+            data = {
+                "url": job["url"],
+                "interval": job["interval"], 
+                "nextUpdate": nextUpdate
+            }
+            joblist.append(data)
+        return joblist
+    
+
+def check_crontime(joblist, stop_event):
+    while not stop_event.is_set():
+        now = datetime.now()
+        for job in joblist:
+            if now >= job["nextUpdate"]:
+                print("Time to update: ", job["url"])
+
+                do_cronjob(job["url"])
+
+                #Calculate new time for cronjob
+                job["nextUpdate"] = now + timedelta(minutes=int(job["interval"]))
+                print("Next update: ", job["nextUpdate"])
+
+def do_cronjob(url):
+    winsound.Beep(1000, 1000)
+    print("Running cronjob: ", url)
+    response = req.get(url)
+    print(response.text)
+    
+
+def test(stop_event):
+    while not stop_event.is_set():
+        time.sleep(5)
+        import winsound
+        winsound.Beep(1000, 1000)
+        # print("Running in the background...")
+        
+    
+
+if __name__ == "__main__":
+    # Create a new json file if one does not exist
+    createJsonFile()
+    # Fetches all cronjobs from json, and calculates new update time
+    # Returns a joblist with url, interval, and next execution time
+    joblist = fetchCronjobs()
+    # Prepares threading, create stop event
+    stop_event = threading.Event()
+    # start thread to check if it is time up do cronjob
+    thread = threading.Thread(target=check_crontime, args=(joblist, stop_event,))
+    thread.start()
+
+    print("\n Welcome to kristian's cronjob mangement system \n")
+    displayChoices()
 
 
 
